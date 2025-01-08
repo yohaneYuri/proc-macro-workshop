@@ -61,11 +61,15 @@ pub fn bitfield(_args: TokenStream, input: TokenStream) -> TokenStream {
                         let mask = ((1 << (end - start + 1)) - 1) << start;
                         // No No No
                         // Is it the only way?
-                        unsafe {
-                            ::std::mem::transmute(
-                                (((u128::from_le_bytes(output) << (start - (start % 8))) & mask) >> start) as #raw_type
-                            )
-                        }
+                        // unsafe {
+                        //     ::std::mem::transmute(
+                        //         (((u128::from_le_bytes(output) << (start - (start % 8))) & mask) >> start) as #raw_type
+                        //     )
+                        // }
+                        // Thanks for Occar421's solution
+                        <#ty as Specifier>::to_access(
+                            (((u128::from_le_bytes(output) << (start - (start % 8))) & mask) >> start) as #raw_type
+                        )
                     }
 
                     pub fn #setter_ident(&mut self, value: #access_type) {
@@ -140,6 +144,10 @@ pub fn define_and_specify_types(_input: TokenStream) -> TokenStream {
                 const BITS: usize = #i;
                 type Access = #ty;
                 type Raw = #ty;
+
+                fn to_access(raw: Self::Raw) -> Self::Access {
+                    raw
+                }
             }
         };
 
@@ -171,11 +179,19 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
 
     let bits = (variants_count as f32).log2() as usize;
     let raw_type = Ident::new(type_from_bits(bits), Span::call_site());
+    let variant_idents: Vec<_> = item.variants.iter().map(|variant| &variant.ident).collect();
     output.extend(quote! {
         impl ::bitfield::Specifier for #ident {
             const BITS: usize = #bits;
             type Access = #ident;
             type Raw = #raw_type;
+
+            fn to_access(raw: Self::Raw) -> Self::Access {
+                match raw {
+                    #(_ if #ident::#variant_idents as Self::Raw == raw => #ident::#variant_idents,)*
+                    _ => unreachable!(),
+                }
+            }
         }
 
         // const _: <#ident as ::bitfield::checks::PowerOf2>::Check = ();

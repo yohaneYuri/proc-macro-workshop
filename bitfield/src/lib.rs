@@ -20,6 +20,9 @@ pub trait Specifier {
     const BITS: usize;
     type Access;
     type Raw;
+
+    // Optimize since https://github.com/occar421/my-proc-macro-workshop/blob/ef287ccb5e445989f29ceec55914839c6ee5140b/bitfield/impl/src/lib.rs
+    fn to_access(raw: Self::Raw) -> Self::Access;
 }
 
 define_and_specify_types!();
@@ -28,5 +31,9 @@ impl Specifier for bool {
     const BITS: usize = 1;
     type Access = bool;
     type Raw = u8;
+    
+    fn to_access(raw: Self::Raw) -> Self::Access {
+        raw != 0
+    }
 }
 
