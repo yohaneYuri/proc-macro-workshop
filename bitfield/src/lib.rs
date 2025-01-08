@@ -10,6 +10,23 @@
 //
 // From the perspective of a user of this crate, they get all the necessary APIs
 // (macro, trait, struct) through the one bitfield crate.
-pub use bitfield_impl::bitfield;
+pub use bitfield_impl::{bitfield, BitfieldSpecifier};
 
-// TODO other things
+use bitfield_impl::define_and_specify_types;
+
+pub mod checks;
+
+pub trait Specifier {
+    const BITS: usize;
+    type Access;
+    type Raw;
+}
+
+define_and_specify_types!();
+
+impl Specifier for bool {
+    const BITS: usize = 1;
+    type Access = bool;
+    type Raw = u8;
+}
+
